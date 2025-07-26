@@ -1,0 +1,11 @@
+# Python bytecode and cache
+__pycache__/
+*.pyc
+
+# Environment variables
+# We will create this file later to hold secret keys
+.env
+
+# IDE and OS specific files
+.vscode/
+.DS_Store

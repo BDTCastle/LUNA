@@ -1,15 +1,13 @@
-version: '3.8'
 services:
   api:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - ./luna_api:/app
     environment:
       - DATABASE_URL=postgresql://luna_user:luna_password@db:5432/luna_db
     depends_on:
-      - db
+      db:
+        condition: service_healthy
   db:
     image: postgres:15
     environment:
@@ -18,5 +16,10 @@ services:
       - POSTGRES_PASSWORD=luna_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U luna_user -d luna_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 volumes:
   postgres_data:

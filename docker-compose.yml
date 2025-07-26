@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./luna_api:/app
+    environment:
+      - DATABASE_URL=postgresql://luna_user:luna_password@db:5432/luna_db
+    depends_on:
+      - db
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=luna_db
+      - POSTGRES_USER=luna_user
+      - POSTGRES_PASSWORD=luna_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+volumes:
+  postgres_data:

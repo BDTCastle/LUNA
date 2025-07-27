@@ -1,46 +1,29 @@
 # LUNA
-LUNA takes care of you
-
-# L.U.N.A. - Lifestyle Utility & Nurturing Assistant
 
 **LUNA Cares for You**
 
-L.U.N.A. is a nurturing assistant that provides weather-based outfit recommendations and proactive reminders to help you live your best life. Built for the Boot.dev 2025 Hackathon.
+# L.U.N.A. - Lifestyle Utility & Nurturing Assistant
+
+## Project Overview
+Note to self: L.U.N.A. is my hackathon project to create a nurturing companion app that suggests daily outfits based on weather, with personalized, toggleable nudges to make users feel cared for. It uses FastAPI, PostgreSQL, and OpenWeatherMap to deliver a seamless experience.
+
+## Features
+- **User Authentication**: Sign up and log in securely with JWT tokens (`/signup`, `/login`).
+- **Weather-Based Outfit Recommendations**: Get personalized outfit suggestions based on city weather and gender preferences (`/recommendation`).
+- **Toggleable Nudges**: Receive optional, nurturing reminders (Whispers) with recommendations, saved to the database if enabled (`/nudges`, `/preferences`).
+- **Nudge History**: View past recommendations to revisit L.U.N.A.’s advice (`GET /nudges`).
+
+## Tech Stack
+- **Backend**: FastAPI (Python) for API routes and logic.
+- **Database**: PostgreSQL with SQLModel for user and nudge data.
+- **Authentication**: python-jose for JWT tokens, passlib for password hashing.
+- **External API**: OpenWeatherMap for real-time weather data.
+- **Containerization**: Docker for consistent development and deployment.
 
 ## Setup Instructions
+Note to self: These are the steps to run L.U.N.A. locally. Make sure Docker is installed!
 
-1.  **Clone the Repository**:
-    `git clone https://github.com/your-username/luna.git`
-    `cd luna`
-
-2.  **Run with Docker**:
-    `docker-compose up --build`
-
-3.  **Access the API**:
-    Open `http://localhost:8000` in a browser.
-
-    Technologies Used
-
-
-
-
-
-Python 3.11
-
-
-
-FastAPI
-
-
-
-SQLModel
-
-
-
-PostgreSQL
-
-
-
-Docker
-
-More features and documentation coming soon!
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/BDTCastle/luna.git
+   cd luna

@@ -1,1 +1,2 @@
-OPENWEATHER_API_KEY = "a3fda20740d1d4213345d3e255b64e78"
+OPENWEATHER_API_KEY = "Awesome API KEEYS"
+# This is a placeholder for the OpenWeather API key.

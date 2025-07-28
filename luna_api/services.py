@@ -5,7 +5,7 @@ import random
 import requests
 from fastapi import HTTPException
 
-def generate_weather_recommendation(city: str) -> str:
+def generate_weather_recommendation(city: str, gender: str) -> str:
     """
     Fetches weather and generates a personalized, sassy outfit recommendation.
     """

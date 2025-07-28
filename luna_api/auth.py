@@ -10,7 +10,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session, select
 
-from models import Guardian
+import models  # <-- FIX #1: Add this missing import
 from database import get_session
 
 # --- Configuration ---
@@ -37,20 +37,22 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # --- The Authentication Dependency ---
-def get_current_guardian(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)) -> Guardian:
+def get_current_guardian(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)) -> models.Guardian:
+    # <-- FIX #2: Define the exception variable here
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        guardian_id: str = payload.get("sub")
+        if guardian_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
     
-    guardian = session.exec(select(Guardian).where(Guardian.email == email)).first()
+    guardian = session.exec(select(models.Guardian).where(models.Guardian.id == int(guardian_id))).first()
     if guardian is None:
         raise credentials_exception
     return guardian

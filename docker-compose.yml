@@ -1,14 +1,20 @@
+version: '3.8'
+
 services:
   api:
     build: .
+    env_file:
+      - .env
     ports:
       - "8000:8000"
+    volumes:
+      - ./luna_api:/app
     environment:
-      - DATABASE_URL=postgresql://luna_user:luna_password@db:5432/luna_db
-      
+      - DATABASE_URL=postgresql://luna_user:luna_password@db/luna_db
     depends_on:
       db:
         condition: service_healthy
+
   db:
     image: postgres:15
     environment:
@@ -22,5 +28,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
 volumes:
   postgres_data:
+
+  # Reminder to self: Sets up API and DB services

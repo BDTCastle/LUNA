@@ -6,29 +6,29 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from typing import Optional, List
-from apscheduler.schedulers.background import BackgroundScheduler # <-- NEW: Import the scheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 
-# Reminder to self: I'm importing our local modules here.
+# Reminder to self: I'm importing all of our own project modules here.
 import auth
 import models
 import services
 from database import engine, get_session
-from schemas import GuardianCreate, PreferencesUpdate
+import schemas
 
-# Reminder to self: This is the function the scheduler will run.
+# Reminder to self: This is the function the scheduler will run in the background.
 def generate_all_nudges():
-    """Finds all eligible users and creates a recommendation whisper for them."""
+    """This job finds all eligible users and creates a recommendation whisper for them."""
     print("Scheduler is running the daily nudge job...")
-    # This function runs in the background, so it needs to create its own DB session.
     with Session(engine) as session:
-        # Find all guardians who have nudges enabled and a location set.
         guardians_to_nudge = session.exec(
             select(models.Guardian).where(models.Guardian.enable_nudges == True).where(models.Guardian.location != None)
         ).all()
 
         for guardian in guardians_to_nudge:
             try:
-                recommendation = services.generate_weather_recommendation(city=guardian.location)
+                # Assuming a default gender for automatic nudges for now
+                recommendation = services.generate_weather_recommendation(city=guardian.location, gender="unisex")
+                # The field in the Whisper model is 'message', not 'content'
                 whisper = models.Whisper(message=recommendation, guardian_id=guardian.id)
                 session.add(whisper)
             except Exception as e:
@@ -43,28 +43,27 @@ scheduler = BackgroundScheduler()
 # Reminder to self: This is the FastAPI app setup section.
 app = FastAPI(title="L.U.N.A.")
 
-# Reminder to self: This is the startup event section.
+# Reminder to self: This is the startup/shutdown event section.
 @app.on_event("startup")
 def on_startup():
+    """This creates database tables and starts the background scheduler."""
     models.SQLModel.metadata.create_all(engine)
-    # <-- NEW: Add and start the scheduler job -->
-    # For the hackathon, we run this every 1 minute for easy testing.
-    # In a real app, you'd use a cron trigger like: trigger='cron', hour=8
     scheduler.add_job(generate_all_nudges, 'interval', minutes=1)
     scheduler.start()
 
-# <-- NEW: Add a shutdown event to be clean -->
 @app.on_event("shutdown")
 def on_shutdown():
+    """This cleanly shuts down the scheduler when the app stops."""
     scheduler.shutdown()
 
 # Reminder to self: This is the API endpoints section.
 @app.post("/signup", response_model=models.Guardian)
-def create_guardian(guardian_data: GuardianCreate, session: Session = Depends(get_session)):
-    # ... (existing signup code, no changes)
+def create_guardian(guardian_data: schemas.GuardianCreate, session: Session = Depends(get_session)):
+    """This endpoint creates a new user (Guardian)."""
     existing = session.exec(select(models.Guardian).where(models.Guardian.email == guardian_data.email)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+
     hashed_password = auth.get_password_hash(guardian_data.password)
     db_guardian = models.Guardian(
         email=guardian_data.email, 
@@ -79,46 +78,58 @@ def create_guardian(guardian_data: GuardianCreate, session: Session = Depends(ge
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
-    # ... (existing login code, no changes)
     guardian = session.exec(select(models.Guardian).where(models.Guardian.email == form_data.username)).first()
     if not guardian or not auth.verify_password(form_data.password, guardian.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    token = auth.create_access_token(data={"sub": guardian.email})
+    
+    # This line is critical: it must use str(guardian.id)
+    token = auth.create_access_token(data={"sub": str(guardian.id)})
     return {"access_token": token, "token_type": "bearer"}
 
 @app.get("/users/me", response_model=models.Guardian)
 def read_users_me(current_guardian: models.Guardian = Depends(auth.get_current_guardian)):
+    """This is a test endpoint to check if authentication is working."""
     return current_guardian
 
 @app.get("/recommendation")
-def get_recommendation(current_guardian: models.Guardian = Depends(auth.get_current_guardian)):
-    # ... (existing recommendation code, no changes)
+def get_recommendation(gender: str, current_guardian: models.Guardian = Depends(auth.get_current_guardian)):
+    """This is our core feature. It generates an outfit recommendation for the logged-in user."""
     if not current_guardian.location:
         raise HTTPException(
             status_code=400, 
-            detail="No location found. Please set one."
+            detail="No location found. Please set one via the /preferences endpoint."
         )
-    recommendation = services.generate_weather_recommendation(city=current_guardian.location)
+    
+    recommendation = services.generate_weather_recommendation(city=current_guardian.location, gender=gender)
     return {"recommendation": recommendation}
 
 @app.patch("/preferences", response_model=models.Guardian)
 def update_preferences(
-    preferences: PreferencesUpdate,
+    preferences: schemas.PreferencesUpdate,
     current_guardian: models.Guardian = Depends(auth.get_current_guardian),
     session: Session = Depends(get_session)
 ):
-    # ... (existing preferences code, no changes)
-    update_data = preferences.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(current_guardian, key, value)
+    """This endpoint lets a logged-in user update their preferences."""
+    # Handle simple, non-nested updates
+    if preferences.location is not None:
+        current_guardian.location = preferences.location
+    if preferences.enable_nudges is not None:
+        current_guardian.enable_nudges = preferences.enable_nudges
+        
+    # CRITICAL FIX: Specifically handle the complex 'habits' dictionary
+    if preferences.habits is not None:
+        current_habits = current_guardian.habits or {}
+        new_habits = {key: value.model_dump() for key, value in preferences.habits.items()}
+        current_habits.update(new_habits)
+        current_guardian.habits = current_habits
+
     session.add(current_guardian)
     session.commit()
     session.refresh(current_guardian)
     return current_guardian
 
-# <-- ENTIRELY NEW SECTION: The Nudges Endpoint -->
 @app.get("/nudges", response_model=List[models.Whisper])
 def get_nudges(current_guardian: models.Guardian = Depends(auth.get_current_guardian), session: Session = Depends(get_session)):
-    """Reminder to self: This endpoint lets a user see all the nudges the scheduler has created for them."""
+    """This endpoint lets a user see all the nudges the scheduler has created for them."""
     nudges = session.exec(select(models.Whisper).where(models.Whisper.guardian_id == current_guardian.id)).all()
     return nudges

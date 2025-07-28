@@ -18,6 +18,7 @@ User Preferences: Users can set their default location so they don't have to ent
 Proactive Nudges: This was the fun part. I added a background scheduler (APScheduler) that automatically runs a job to create a "Whisper" for users who want them. It proves the app can think for itself(This was actually easier than I thought it was going to be, the advanced python scheduler documentation was really thorough and easy to adapt).
 
 How I Built It (The Tech Stack)
+
 Here's the tech stack I used to bring L.U.N.A. to life:
 
 Backend: Python with FastAPI

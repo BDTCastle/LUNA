@@ -5,7 +5,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://luna_user:luna_password@db:5432/luna_db
-      - OPENWEATHER_API_KEY=5ced3b5e72d491d8757816a2ef8aaf39 
+      
     depends_on:
       db:
         condition: service_healthy
